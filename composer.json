@@ -1,0 +1,26 @@
+{
+    "name": "gabrielsouza/wepayments",
+    "description": "WePayments Gateway Plugin",
+    "type": "project",
+    "license": "GPL",
+    "autoload": {
+        "psr-4": {
+            "Inc_Woo_We_Payments\\": "./inc"
+        }
+    },
+   
+    "authors": [
+        {
+            "name": "gabrielsouza",
+            "email": "gabrielsouzabd@outlook.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {
+        "woocommerce/woocommerce": "^3.0",
+        "endroid/qr-code": "^4.6",
+        "chillerlan/php-qrcode": "^4.3",
+        "picqer/php-barcode-generator": "^2.3"
+
+    }
+}
