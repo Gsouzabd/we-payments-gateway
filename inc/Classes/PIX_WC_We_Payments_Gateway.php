@@ -22,8 +22,8 @@ class PIX_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
         $url = $this->url;
         
         $this->id = 'woo_we_payments_pix'; 
-        $this->method_title = 'We Payments - Pix';
-        $this->method_description = 'Receba pagamentos em PIX com a We Payments.'; 
+        $this->method_title = 'WEPayments - Pix';
+        $this->method_description = 'Receba pagamentos em PIX com a WEPayments.'; 
     
         $this->supports = array(
             'products'
@@ -37,6 +37,8 @@ class PIX_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
         $this->description = $this->get_option( 'description' );
         $this->enabled = $this->get_option( 'enabled' );
         $this->instructions = $this->get_option( 'instructions' );
+        $this->expiration = $this->get_option( 'expiration' );
+
         // $this->chave_pix = $this->chave_pix ? $this->get_option( 'chave_pix' ) : $this->get_option( 'chave_pix' );
     
         add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
@@ -54,7 +56,7 @@ class PIX_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
         $this->form_fields = array(
             'enabled' => array(
                 'title'       => 'Ativar',
-                'label'       => 'Ativar PIX - We Payments',
+                'label'       => 'Ativar PIX - WEPayments',
                 'type'        => 'checkbox',
                 'description' => '',
                 'default'     => 'no'
@@ -62,14 +64,15 @@ class PIX_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
             'title' => array(
                 'title'       => 'Título',
                 'type'        => 'text',
-                'description' => '',
-                'default'     => 'We Payments',
+                'description' => 'Título que aparecerá na página de finalização de compra.',
+                'default'     => 'Pix',
                 'desc_tip'    => true,
             ),
             'description' => array(
                 'title'       => 'Descrição',
                 'type'        => 'textarea',
-                'description' => '',
+                'description' => 'Descrição que aparecerá na página de finalização de compra.',
+                'desc_tip'    => true,
                 'default'     => 'O QR CODE aparecerá após a finalização da compra.',
             ),
             'instructions' => [
@@ -79,26 +82,17 @@ class PIX_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
                 'description' => __( 'Descrição que aparecerá na tela de agradecimento.', 'woo-we-payments' ),
                 'default'     => __( 'Faça o pagamento com QR Code no app do seu banco.' ),
             ],
-            // 'chave_pix' => array(
-            //     'title'       => 'Chave Pix',
-            //     'type'        => 'text',
-            //     'description' => '',
-            //     'default'     => 'We Payments',
-            //     'desc_tip'    => true,
-            // ),
+            'expiration' => array(
+                'title'       => __( 'Expiração', 'woo-we-payments' ),
+                'type'        => 'number',
+                'description' => __( 'Defina em minutos o tempo de expiração do código pix.', 'woo-we-payments' ),
+                'default'     => '0',
+                'desc_tip'    => true,
+            ),
            
         );
     }
-
-
-    /*
-    * Custom CSS and JS
-    */
-    public function payment_scripts() {
-
-
-    }
-
+    
 
     public function validate_fields() {
 
@@ -125,12 +119,19 @@ class PIX_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
             echo 'Invalid order.';
             return;
         }
+
         //order data
         $amount_in_cents = $order->get_total() * 100; // Converte para centavos
+        date_default_timezone_set('America/Sao_Paulo');
         $dateTime = new DateTime();
+                // Adiciona o tempo definido no campo 'expiração'
+        $dateTime->modify('+' . ($this->expiration ? $this->expiration : '5'). ' minutes');
         $formattedDate = $dateTime->format('Y-m-d\TH:i:s');
 
 
+        echo json_encode(array('date' => $formattedDate));
+
+        
         //customer data
         $customer_name = $order->get_billing_first_name() . ' ' . $order->get_billing_last_name();
         $document_number = str_replace(array('.', '-', ' '), '', get_user_meta($order->get_user_id(), 'billing_cpf', true));
@@ -149,7 +150,7 @@ class PIX_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
             'title' => array(
                 'expireDate' => $formattedDate,
                 'amountInCents' => $amount_in_cents,
-                'instructions' => 'any bank'
+                'instructions' => "Pedido: {$order_id} - ".site_url()
             ),
             'buyer' => array(
                 'name' => $customer_name,
@@ -189,15 +190,18 @@ class PIX_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
         
         $response = json_decode(curl_exec($curl),true);
         
+		// ORDER LOG
+		$logger = wc_get_logger();
+
         if (curl_errno($curl)) {
             echo 'Error: ' . curl_error($curl);
+            $logger->info( wc_print_r( $response, true ), array( 'source' => 'woo-we-payments-pix-errors' ) );
+
         } else {
             $response_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
             echo json_encode(array('response' => $response));
 
             if($response_code == 201){
- 
-    
                 // Empty cart
                 $woocommerce->cart->empty_cart();
     
@@ -211,9 +215,12 @@ class PIX_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
                 
                 $qrCodeImage = $qrcode->render($pixPayload);
 
-				$order->add_order_note( 'Cobrança criada na We Payments.');
+				$order->add_order_note( 'Cobrança criada na WEPayments.');
                 $order->add_order_note( 'Pix gerado: '.$pixPayload, true );
 
+                $key = $response['key'];
+                $payinId = $response['id'];
+                
                 
                 $return_data = array(
                     'result'   => 'success',
@@ -223,9 +230,14 @@ class PIX_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
                 $order->update_meta_data( 'pix_payload', $qrCodeImage);
                 $order->update_meta_data( 'pix_copy_paste', $pixPayload);
                 $order->update_meta_data( 'pix_instructions', $this->instructions);
-                
+                $order->update_meta_data( 'pix_expiration', $formattedDate);
+
+                $logger->info( wc_print_r( $response, true ), array( 'source' => 'woo-we-payments-pix-success' ) );
+
                 $order->save();
-                
+                sleep(5);
+                $this->send_cdb_documents($order_id, $payinId);
+
                 return $return_data;
             }
 
@@ -257,7 +269,7 @@ class PIX_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
                         $note_content = '';
                         if($status == 'confirmed' || $status ==  'confirmado'
                         || $status == 'paid' || $status ==  'pago'){
-                            $order->payment_complete();
+                            $order->update_status( 'processing' );
             
                             $note_content = 'Pagamento realizado. Atualizado via webhook. ';
                         }

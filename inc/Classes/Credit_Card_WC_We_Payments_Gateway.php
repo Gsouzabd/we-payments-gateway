@@ -2,6 +2,11 @@
 namespace Inc_Woo_We_Payments\Classes;
 
 use DateTime;
+use Inc_Woo_We_Payments\Classes\StatusDetails\Messages\GeneralProblemsCard;
+use Inc_Woo_We_Payments\Classes\StatusDetails\Messages\IncorrectInfoCard;
+use Inc_Woo_We_Payments\Classes\StatusDetails\Messages\NoMessageInfo;
+use Inc_Woo_We_Payments\Classes\StatusDetails\StatusDetails;
+use Inc_Woo_We_Payments\Classes\StatusDetails\statusHistory;
 
 if(file_exists((dirname(__FILE__) . '/vendor/autoload.php'))){
     require_once((dirname(__FILE__) . '/vendor/autoload.php'));
@@ -17,9 +22,9 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
         $url = $this->url;
         
         $this->id = 'woo_we_payments_credit_card'; 
-        $this->method_title = 'We Payments - Cartão de Crédito';
+        $this->method_title = 'WEPayments - Cartão de Crédito';
 		$this->has_fields = true;
-        $this->method_description = 'Receba pagamentos de cartão de crédito com a We Payments.'; 
+        $this->method_description = 'Receba pagamentos de cartão de crédito com a WEPayments.'; 
     
         $this->supports = array(
             'products'
@@ -32,8 +37,11 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
         $this->title = $this->get_option( 'title' );
         $this->description = $this->get_option( 'description' );
         $this->enabled = $this->get_option( 'enabled' );
-        $this->instructions = $this->get_option( 'instructions' );
-    
+        $this->smallest_installment = $this->get_option( 'smallest_installment' );
+		$this->max_installments = $this->get_option( 'max_installments' );
+		$this->statement_descriptor = $this->get_option( 'statement_descriptor' );
+
+
         add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
     
 		wp_enqueue_script('imask', 'https://unpkg.com/imask', array(), '6.1.0', true);
@@ -45,7 +53,19 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
         add_action( 'woocommerce_api_woo_we_payments_credit_card', array( $this, 'webhook' ) );
     }
 
+    public function validate_fields() {
 
+        if( empty( $_POST[ 'billing_first_name' ]) ) {
+            wc_add_notice(  'Campo "nome" é obrigatório!', 'error' );
+            return false;
+        }
+        if( empty( $_POST[ 'billing_cpf' ]) ) {
+            wc_add_notice(  'Campo "CPF" é obrigatório!', 'error' );
+            return false;
+        }
+        return true;
+
+    }
 
 	public function webhook() {
 		if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -66,7 +86,7 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
                         $note_content = '';
                         if($status == 'confirmed' || $status ==  'confirmado'
                         || $status == 'paid' || $status ==  'pago'){
-                            $order->payment_complete();
+                            $order->update_status( 'processing' );
             
                             $note_content = 'Pagamento realizado. Atualizado via webhook. ';
                         }
@@ -75,9 +95,19 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
                         }
                         if($status == 'canceled' || $status ==  'cancelado'
                         || $status == 'rejected' || $status ==  'rejeitado'){
-                            $order->update_status('cancelled', 'Pagamento cancelado ou rejeitado. Atualizado via webhook.');
-                                
-                            $note_content = 'Pagamento cancelado ou rejeitado. Atualizado via webhook. ';
+							$json_status_history = end($decoded_data['statusHistory']) ? end($decoded_data['statusHistory']) : false;
+							$status_history_detail = $json_status_history = is_array($json_status_history) ? $json_status_history['status_detail'] : 'Detalhes nao fornecido';
+							
+							//Cadeia de status
+							$status_history = new statusHistory();
+							$status_history->detail = $status_history_detail;
+
+							$status_details = new StatusDetails();
+							$message = $status_details->getMessage($status_history);
+
+                            $order->update_status('cancelled');
+                            
+                            $note_content = "Pagamento cancelado ou rejeitado. Atualizado via webhook. Detalhe: {$message}";
                         }
 
                         $order->add_order_note($note_content);
@@ -99,7 +129,7 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
         $this->form_fields = array(
             'enabled' => array(
                 'title'       => 'Ativar',
-                'label'       => 'Ativar Cartão de Crédito - We Payments',
+                'label'       => 'Ativar Cartão de Crédito - WEPayments',
                 'type'        => 'checkbox',
                 'description' => '',
                 'default'     => 'no'
@@ -107,26 +137,90 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
             'title' => array(
                 'title'       => 'Título',
                 'type'        => 'text',
-                'description' => '',
-                'default'     => 'We Payments',
+                'description' => 'Título que aparecerá na página de finalização de compra.',
+                'default'     => 'Cartão de Crédito',
                 'desc_tip'    => true,
             ),
             'description' => array(
                 'title'       => 'Descrição',
                 'type'        => 'textarea',
-                'description' => '',
-                'default'     => 'Pague com a We Payments',
+                'description' => 'Descrição que aparecerá na página de finalização de compra.',
+                'default'     => 'Pague com o cartão de crédito',
+				'desc_tip'    => true,
+
             ),
-           
+			'statement_descriptor' => array(
+                'title'       => 'Statement Descriptor',
+                'type'        => 'text',
+                'description' => 'Título que aparecerá na fatura do cartão do cliente.',
+                'default'     => 'wc-',
+                'desc_tip'    => true,
+            ),
+			'max_installments' => [
+				'title'       => __( 'Número Máximo de Parcelas', 'woo-we-payments' ),
+				'type'        => 'select',
+				'options'     => [
+					'1'       => __( 'Sem parcelamento', 'woo-we-payments' ),
+					'2'       => __( '2x', 'woo-we-payments' ),
+					'3'       => __( '3x', 'woo-we-payments' ),
+					'4'       => __( '4x', 'woo-we-payments' ),
+					'5'       => __( '5x', 'woo-we-payments' ),
+					'6'       => __( '6x', 'woo-we-payments' ),
+					'7'       => __( '7x', 'woo-we-payments' ),
+					'8'       => __( '8x', 'woo-we-payments' ),
+					'9'       => __( '9x', 'woo-we-payments' ),
+					'10'      => __( '10x', 'woo-we-payments' ),
+					'11'      => __( '11x', 'woo-we-payments' ),
+					'12'      => __( '12x', 'woo-we-payments' ),
+				],
+				'default'     => '10',
+				'description' => __( 'Máximo de parcelas disponíveis', 'woo-we-payments' ),
+			],
+			'smallest_installment' => [
+				'title'             => __( 'Parcela mínima', 'woo-we-payments' ),
+				'type'              => 'number',
+				'default'           => '5',
+				'custom_attributes' => array(
+					'min' => 5
+				),
+				'description'       => __( 'Valor mínimo das parcelas.', 'woo-we-payments' ),
+			]
         );
     }
 
+
+	function get_installment_options() {
+		$total = WC()->cart->total;
+		$options = [];
+		$max_installments = $this->max_installments;
+		$smallest_installment = $this->smallest_installment;
+	
+		// Calculate the maximum number of installments possible
+		$max_possible_installments = floor($total / $smallest_installment);
+	
+		// Limit the installments to the maximum allowed
+		$installments = min($max_installments, $max_possible_installments);
+	
+		// Calculate the installment amount
+		$installment_amount = ceil($total / $installments);
+	
+		// Populate the options array with installment amounts
+		for ($i = 1; $i <= $installments; $i++) {
+			$options[] = $installment_amount;
+		}
+	
+		return $options;
+	}
+	
 
 
     public function process_payment( $order_id ) {
         global $woocommerce;
 
         $order = wc_get_order( $order_id );
+
+		// ORDER LOG
+		$logger = wc_get_logger();
 
         // Verifica se o pedido existe e se está em andamento
         if ( ! $order || ! $order->has_status( array( 'pending', 'processing' ) ) ) {
@@ -140,6 +234,15 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
 		$card_token = $_POST['card_token'];
 		$installments = $_POST['woo-we-payments-installment'];
 
+		if ( !$card_token ||$card_token == 0 || $card_token == '0') {
+            $response = "ERROR, ORDER_ID '{$order_id}':  Dados do cartão inválidos - Não foi possível gerar o token do cartão. Verifique os dados e tente novamente.";
+			$logger->info( wc_print_r( $response, true ), array( 'source' => 'woo-we-payments-credit-card-errors' ) );
+
+			wc_add_notice(  'Dados do cartão inválidos, por favor verifique os campos preenchidos e tente novamente..', 'error' );
+			
+
+            return;
+        }
 
 		$product_info = array();
 
@@ -152,7 +255,6 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
 			$product_price = $order_item->get_total();
 
 		
-	
 			$product_info[] = array(
 				'title' => $product_title,
 				'id' => strval($product_id),
@@ -191,7 +293,7 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
                     'type' => 'CPF'
                 ),
 			),
-			'statement_descriptor' => 'woocommerce',
+			'statement_descriptor' => $this->statement_descriptor,
 			'external_urls' => array(),
 			'product_info' => $product_info,
 			'sender' => array(
@@ -208,16 +310,18 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
 				'district' => $neighborhood ? $neighborhood : 'Centro', 
 				'stateCode' => $state_code
 			),
-			"token" => $card_token,
-			"installments" => $installments,
-			"payment_method_id" => "master",
-			"payer_name" => $customer_name,
-			"payer_phone" => "99999999999",
-			"payer_address" => [
-				"zip_code" => $zipcode,
-				"street_name" => $street,
-				"street_number" => $street_number
-			]
+			'checkout' => array(
+				"token" => $card_token,
+				"installments" => $installments,
+				"payment_method_id" => "master",
+				"payer_name" => $customer_name,
+				"payer_phone" => "99999999999",
+				"payer_address" => [
+					"zip_code" => $zipcode,
+					"street_name" => $street,
+					"street_number" => $street_number
+				]
+			)
         );
         
         $curl = curl_init();
@@ -239,47 +343,48 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
         ));
         
         $response = json_decode(curl_exec($curl),true);
+		echo json_encode(array('response' => $response));
+ 
 		if (curl_errno($curl)) {
 			echo 'Error: ' . curl_error($curl);
+			$logger->info( wc_print_r( $response, true ), array( 'source' => 'woo-we-payments-credit-card-errors' ) );
 		} else {
 			$response_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-			echo json_encode(array('response' => $response));
 			if ($response_code == 201) {
 			    
                 // Empty cart
                 $woocommerce->cart->empty_cart();
 
 				$key = $response['key'];
+                $payinId = $response['id'];
                 
+
+				$this->we_payents_save_key_and_checkout($order,$key);
+
                 $return_data = array(
                     'result'   => 'success',
                     'redirect' => $this->get_return_url($order),
                 );
-				$order->add_order_note( 'Cobrança criada na We Payments.');
-				$order->update_meta_data( 'woo_we_payments_key', $key);
 
-                $order->save();
+				$order->add_order_note( 'Cobrança criada na WEPayments.');
+				$logger->info( wc_print_r( $response, true ), array( 'source' => 'woo-we-payments-credit-card-success' ) );
+
+				$order->save();
+                sleep(5);
+                $this->send_cdb_documents($order_id, $payinId);
                 
                 return $return_data;
             }
-
-
         }
-        
-        
-        curl_close($curl);
-        
+        curl_close($curl);      
     }   
 	
-
-
-
 
 	public function payment_fields() {
  
 		if ( $this->description ) {
 			if ( $this->testmode ) {
-				$this->description .= ' TEST MODE ENABLED. In test mode, you can use the card numbers listed in <a href="#">documentation</a>.';
+				$this->description .= ' SANDBOX ATIVO. No modo sandbox você pode utilizar os cartões listados na nossa <a href="https://docs.wepayout.co/pt/docs/payin/test_cards/">documentation</a>.';
 				$this->description  = trim( $this->description );
 			}
 			echo wpautop( wp_kses_post( $this->description ) );
@@ -390,7 +495,7 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
 					</div>
 				</div>
 			</div>
-			<div class="form-container">
+			<div class="woo-we-payments-card-container">
 				<div class="field-container">
 					<label for="name">Nome no Cartão</label>
 					<input id="name" maxlength="20" type="text">
@@ -402,18 +507,30 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
 						xmlns:xlink="http://www.w3.org/1999/xlink">
 					</svg>
 				</div>
-				<div class="field-container">
-					<label for="expirationdate">Validade (mm/aa)</label>
-					<input id="expirationdate" type="text" pattern="[0-9]*" inputmode="numeric">
-				</div>
-				<div class="field-container">
-					<label for="securitycode">CVV</label>
-					<input id="securitycode" type="text" pattern="[0-9]*" inputmode="numeric">
+				<div class="field-container" style="display: flex;gap: 5%;">
+					<div style="width: 60%">
+						<label for="expirationdate">Validade (mm/aa)</label>
+						<input id="expirationdate" type="text" pattern="[0-9]*" inputmode="numeric">
+					</div>
+					<div style="width: 40%">
+						<label for="securitycode">CVV</label>
+						<input id="securitycode" type="text" pattern="[0-9]*" inputmode="numeric">
+					</div>
 				</div>
 				<div class="field-container">
 					<label for="woo-we-payments-installment">Parcelas</label>
 					<select name="woo-we-payments-installment" id="woo-we-payments-installment">
-						<option selected="true" disabled="disabled">Selecione o número de parcelas</option>    
+						<?php
+						$installment_options = $this->get_installment_options();
+
+						foreach ($installment_options as $key => $installment) {
+							$installment_quantity = $key + 1;
+							$installment_price = number_format(floatval(WC()->cart->total / $installment_quantity), 2, ',', '.');
+							$installment_display = "{$installment_quantity}x de {$installment_price}";
+
+							echo "<option value=\"$installment_quantity\">$installment_display</option>";
+						}
+						?>
 					</select>
 				</div>
 				<input type="hidden" id="amount_in_cents" name="amount_in_cents" value="<?php echo WC()->cart->total * 100; ?>">
@@ -449,18 +566,18 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
 						}
 					}
 
-					async function getInstallments(amountInCents, bin){
-						try{
-							const installments = await sdk.installments({
-								amountInCents: amountInCents,
-								bin: bin,
-							});
-							return installments;
-						}catch (error) {
-							console.error('Error trying to get installments:', error);
-							return null;
-						}
-					}
+					// async function getInstallments(amountInCents, bin){
+					// 	try{
+					// 		const installments = await sdk.installments({
+					// 			amountInCents: amountInCents,
+					// 			bin: bin,
+					// 		});
+					// 		return installments;
+					// 	}catch (error) {
+					// 		console.error('Error trying to get installments:', error);
+					// 		return null;
+					// 	}
+					// }
 
 					document.addEventListener('change', function(event) {
 						const amountInCents = document.querySelector('input#amount_in_cents').value;
@@ -468,29 +585,29 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
 						const cpfInput = document.querySelector('input#billing_cpf');
 						const nameInput = document.getElementById('name');
 						const numberInput = document.getElementById('cardnumber');
-						// get installments and return in select
-						if (event.target === numberInput && numberInput.value.length > 5) {
-							var bin = numberInput.value.substr(0, 7); 
-							bin = bin.replace(/\s+/g, '');
-							bin.toString();
-							getInstallments(amountInCents, bin)
-							.then(installments => {
-								const installmentsArray = installments.installments;
+						// // get installments and return in select
+						// if (event.target === numberInput && numberInput.value.length > 5) {
+						// 	var bin = numberInput.value.substr(0, 7); 
+						// 	bin = bin.replace(/\s+/g, '');
+						// 	bin.toString();
+						// 	getInstallments(amountInCents, bin)
+						// 	.then(installments => {
+						// 		const installmentsArray = installments.installments;
 
-								console.log('installments:', installmentsArray);
-								installmentsArray.forEach(installment => {
-									const option = document.createElement('option');
-									option.value = installment.installmentsNumber;
-									option.text = installment.recommendedMessage;
+						// 		console.log('installments:', installmentsArray);
+						// 		installmentsArray.forEach(installment => {
+						// 			const option = document.createElement('option');
+						// 			option.value = installment.installmentsNumber;
+						// 			option.text = installment.recommendedMessage;
 									
-									installmentsSelect.appendChild(option);
-								});
-							})
-							.catch(error => {
-								console.error('Error:', error);
-								installmentsSelect.value = 0;
-							});
-						}
+						// 			installmentsSelect.appendChild(option);
+						// 		});
+						// 	})
+						// 	.catch(error => {
+						// 		console.error('Error:', error);
+						// 		installmentsSelect.value = 0;
+						// 	});
+						// }
 						const expDateInput = document.getElementById('expirationdate');
 						const cvvInput = document.getElementById('securitycode');
 
@@ -514,10 +631,6 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
 
 							if(expDateValue !== '' && numberInputValue !== '' && 
 							cvvInputValue !== '' && nameInputValue !== '' && cpf !== ''){
-								console.log(nameInput)
-								console.log(numberInput)
-								console.log(numberInputValue)
-								console.log(nameInputValue)
 								const cardData = {
 									cardNumber: numberInputValue,
 									cardholderName: nameInputValue,
@@ -555,12 +668,15 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
 	public function credit_card_css(){
 		?>
 		<style>
+			.woo-we-payments-card-container{
+				margin: 20px;
+			}
 
-			.form-container .field-container:first-of-type {
+			.woo-we-payments-card-container .field-container:first-of-type {
 				grid-area: name;
 			}
 
-			.form-container .field-container:nth-of-type(2) {
+			.woo-we-payments-card-container .field-container:nth-of-type(2) {
 				grid-area: number;
 			}
 
@@ -607,11 +723,11 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
 			}
 
 			.ccicon {
-				height: 38px;
+				height: 34px;
 				position: absolute;
 				right: 6px;
-				top: calc(50% - 17px);
-				width: 60px;
+				top: calc(50% - 6px);
+				width: 45px;
 			}
 
 			/* CREDIT CARD IMAGE STYLING */
@@ -644,8 +760,6 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
 			.creditcard svg#cardfront,
 			.creditcard svg#cardback {
 				width: 100%;
-				-webkit-box-shadow: 1px 5px 6px 0px black;
-				box-shadow: 1px 5px 6px 0px black;
 				border-radius: 22px;
 			}
 
@@ -864,17 +978,22 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
 				transition: transform 0.6s;
 				transition: transform 0.6s, -webkit-transform 0.6s;
 				cursor: pointer;
+				margin-bottom: 50px;
+			}
+			.container.preload{
+				margin-bottom: 60px;
 			}
 
 			.creditcard .front,
 			.creditcard .back {
 				position: absolute;
-				width: 90%;
+				width: 100%;
 				max-width: 400px;
 				-webkit-backface-visibility: hidden;
 				backface-visibility: hidden;
 				-webkit-font-smoothing: antialiased;
 				color: #47525d;
+				margin-bottom: 20px;
 			}
 
 			.creditcard .back {
@@ -1141,27 +1260,6 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
 						});
 
 
-
-						// //Generate random card number from list of known test numbers
-						// const randomCard = function () {
-						// 	let testCards = [
-						// 		'4000056655665556',
-						// 		'5200828282828210',
-						// 		'371449635398431',
-						// 		'6011000990139424',
-						// 		'30569309025904',
-						// 		'3566002020360505',
-						// 		'6200000000000005',
-						// 		'6759649826438453',
-						// 	];
-						// 	let randomNumber = Math.floor(Math.random() * testCards.length);
-						// 	cardnumber_mask.unmaskedValue = testCards[randomNumber];
-						// }
-						// generatecard.addEventListener('click', function () {
-						// 	randomCard();
-						// });
-
-
 						// CREDIT CARD IMAGE JS
 						document.querySelector('.creditcard').addEventListener('click', function () {
 							if (this.classList.contains('flipped')) {
@@ -1228,6 +1326,7 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
 						$domobj.siblings('input[name$="expiryYear"]').val(matches[2]);
 						}
 
+
 						jQuery('input').on('keyup', function(event) {
 						if (jQuery(this).attr('id') === 'expirationdate') {
 							expiryMask(event);
@@ -1239,6 +1338,9 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
 							splitDate(jQuery(this), jQuery(this).val());
 						}
 						});
+						if (event.target.value.length > 5) {
+							event.target.value = event.target.value.slice(0, 5);
+						}
 					}
 
 					

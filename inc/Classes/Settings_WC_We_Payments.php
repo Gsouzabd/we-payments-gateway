@@ -13,7 +13,7 @@ class Settings_WC_We_Payments extends WC_Integration {
 		// Setup general properties
         $this->id = 'woo_we_payments'; 
 
-        $this->method_title = 'We Payments';
+        $this->method_title = 'WEPayments';
         $this->init_form_fields();
     
         // Load the settings.
@@ -35,7 +35,7 @@ class Settings_WC_We_Payments extends WC_Integration {
         $this->settings = array(
             'enabled' => array(
                 'title'       => 'Ativar',
-                'label'       => 'Ativar We Payments Gateway',
+                'label'       => 'Ativar WEPayments Gateway',
                 'type'        => 'checkbox',
                 'description' => '',
                 'default'     => 'no'
@@ -66,6 +66,20 @@ class Settings_WC_We_Payments extends WC_Integration {
                 'title'       => 'Produção Public Key',
                 'type'        => 'text',
                 'description' => 'Por favor, insira sua Public Key do WePayments. Isto é necessário para processar pagamentos em produção.'
+            ),
+            'upload_file_enabled' => array(
+                'title'       => 'Ativar Campos para Upload de Arquivo',
+                'label'       => 'Ativar ',
+                'type'        => 'checkbox',
+                'description' => '',
+                'default'     => 'no'
+            ),
+            'upload_file_title' => array(
+                'title'       => 'Título da aba de Uploads de Arquivos',
+                'type'        => 'text',
+                'desc_tip'    => true,
+                'description' => 'Título que aparecerá acima do campo para envio de arquivos na página de finalização de compra.',
+                'default'     => 'Envie seu arquivo',
             )
         );
     

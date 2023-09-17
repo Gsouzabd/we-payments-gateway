@@ -122,7 +122,7 @@ if ( ! function_exists( __NAMESPACE__ . '\autoloader' ) ) {
 /**
  * Prepare all the classes for autoloading.
  */
-function enqueue_packages_77199732ef5702b1d0d282f250a85f9f() {
+function enqueue_packages_695e1256c42e0de3d316fbe1495dc5c7() {
 	$class_map = require_once dirname( __FILE__ ) . '/composer/autoload_classmap_package.php';
 	foreach ( $class_map as $class_name => $class_info ) {
 		enqueue_package_class( $class_name, $class_info['version'], $class_info['path'] );
@@ -141,4 +141,4 @@ function enqueue_packages_77199732ef5702b1d0d282f250a85f9f() {
 		}
 	}
 }
-enqueue_packages_77199732ef5702b1d0d282f250a85f9f();
+enqueue_packages_695e1256c42e0de3d316fbe1495dc5c7();

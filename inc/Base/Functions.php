@@ -2,6 +2,8 @@
 
 namespace Inc_Woo_We_Payments\Base;
 
+use DateTime;
+
 class Functions{
     
     public function register(){
@@ -21,6 +23,10 @@ class Functions{
         $pixPayload = $order->get_meta('pix_payload');
         $pixInstructions = $order->get_meta('pix_instructions');
         $pixCopyPaste = $order->get_meta('pix_copy_paste');
+        $pixExpiration = $order->get_meta('pix_expiration');
+        $dateTime = new DateTime($pixExpiration);   
+        // Formata a data no formato 'd-m-y\TH:i:s'
+        $formattedDatePixEpiration = $dateTime->format('d-m-y\TH:i:s');
         //Gera o qrcode 
         if ($pixPayload) {
             echo '<div id="custom-thankyou-content" style="text-align: center">';
@@ -28,6 +34,7 @@ class Functions{
                 echo  '<img src="'.$pixPayload.'">'; 
                 echo '<p>'.$pixInstructions.'</p>';
                 echo '<p>Ou copie e cole o código: </p><p><u>'.$pixCopyPaste.'</u></p>';
+                echo '<small>Esse código irá expirar em ' . $formattedDatePixEpiration . '</small>';
             echo '</div>';
         }
     }
@@ -43,15 +50,15 @@ class Functions{
         
         $boletoBarCode = $order->get_meta('boleto_bar_code');
         $digitableLine = $order->get_meta('boleto_digitable_line');
+        $checkoutLink = $order-> get_meta('woo_we_payments_checkout');
 
-        //Gera o qrcode 
+        //Gera o código de barra 
         if ($boletoBarCode) {
             echo '<div id="custom-thankyou-content" style="text-align: center">';
             echo '<p>Pague em qualquer banco de sua preferência com o código de barra abaixo:</p>';
             echo  $boletoBarCode ;
             echo '<u>'.$digitableLine.'</u>';
-
-
+            echo '<h4><a href="'.$checkoutLink.'"> Imprimir boleto </a><h5>';
             echo '</div>';
         }
     }
