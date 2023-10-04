@@ -1,6 +1,6 @@
 {
     "name": "gabrielsouza/wepayments",
-    "description": "WePayments Gateway Plugin",
+    "description": "WEpayments Gateway Plugin",
     "type": "project",
     "license": "GPL",
     "autoload": {

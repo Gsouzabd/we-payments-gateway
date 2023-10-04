@@ -1,7 +1,7 @@
 <?php
 /*
-* Plugin Name:          WEPayments for WooCommerce
-* Description:          Plugin de integração com o gateway de pagamento - WEPayments
+* Plugin Name:          WEpayments for WooCommerce
+* Description:          Plugin de integração com o gateway de pagamento - WEpayments
 * Author:               Flow Digital Creative Ecommerce
 * Author URI:           https://goflow.digital
 * Version:              1.0.0
@@ -54,7 +54,7 @@ function needs_brazilian_woocommerce_plugin() {
 
 function woo_we_payments_dependency_warning() {
     echo '<div class="notice notice-error"><p>';
-    echo 'O plugin WEPayments para WooCommerce precisa que o plugin Brazilian Market on WooCommerce esteja ativo. Por favor, instale ou ative-o.';
+    echo 'O plugin WEpayments para WooCommerce precisa que o plugin Brazilian Market on WooCommerce esteja ativo. Por favor, instale ou ative-o.';
     echo '</p></div>';
 }
 

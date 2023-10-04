@@ -6,7 +6,7 @@ use Inc_Woo_We_Payments\Classes\StatusDetails\Messages\GeneralProblemsCard;
 use Inc_Woo_We_Payments\Classes\StatusDetails\Messages\IncorrectInfoCard;
 use Inc_Woo_We_Payments\Classes\StatusDetails\Messages\NoMessageInfo;
 use Inc_Woo_We_Payments\Classes\StatusDetails\StatusDetails;
-use Inc_Woo_We_Payments\Classes\StatusDetails\statusHistory;
+use Inc_Woo_We_Payments\Classes\StatusDetails\StatusHistory;
 
 if(file_exists((dirname(__FILE__) . '/vendor/autoload.php'))){
     require_once((dirname(__FILE__) . '/vendor/autoload.php'));
@@ -22,13 +22,10 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
         $url = $this->url;
         
         $this->id = 'woo_we_payments_credit_card'; 
-        $this->method_title = 'WEPayments - Cartão de Crédito';
+        $this->method_title = 'WEpayments - Cartão de Crédito';
 		$this->has_fields = true;
-        $this->method_description = 'Receba pagamentos de cartão de crédito com a WEPayments.'; 
+        $this->method_description = 'Receba pagamentos de cartão de crédito com a WEpayments.'; 
     
-        $this->supports = array(
-            'products'
-        );
     
         $this->init_form_fields();
     
@@ -53,19 +50,7 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
         add_action( 'woocommerce_api_woo_we_payments_credit_card', array( $this, 'webhook' ) );
     }
 
-    public function validate_fields() {
 
-        if( empty( $_POST[ 'billing_first_name' ]) ) {
-            wc_add_notice(  'Campo "nome" é obrigatório!', 'error' );
-            return false;
-        }
-        if( empty( $_POST[ 'billing_cpf' ]) ) {
-            wc_add_notice(  'Campo "CPF" é obrigatório!', 'error' );
-            return false;
-        }
-        return true;
-
-    }
 
 	public function webhook() {
 		if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -99,15 +84,15 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
 							$status_history_detail = $json_status_history = is_array($json_status_history) ? $json_status_history['status_detail'] : 'Detalhes nao fornecido';
 							
 							//Cadeia de status
-							$status_history = new statusHistory();
+							$status_history = new StatusHistory();
 							$status_history->detail = $status_history_detail;
 
 							$status_details = new StatusDetails();
 							$message = $status_details->getMessage($status_history);
 
-                            $order->update_status('cancelled');
+                            $order->update_status('failed');
                             
-                            $note_content = "Pagamento cancelado ou rejeitado. Atualizado via webhook. Detalhe: {$message}";
+                            $note_content = "Pagamento cancelado ou rejeitado. Atualizado via webhook. Detalhe: {$message}.";
                         }
 
                         $order->add_order_note($note_content);
@@ -129,7 +114,7 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
         $this->form_fields = array(
             'enabled' => array(
                 'title'       => 'Ativar',
-                'label'       => 'Ativar Cartão de Crédito - WEPayments',
+                'label'       => 'Ativar Cartão de Crédito - WEpayments',
                 'type'        => 'checkbox',
                 'description' => '',
                 'default'     => 'no'
@@ -234,15 +219,15 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
 		$card_token = $_POST['card_token'];
 		$installments = $_POST['woo-we-payments-installment'];
 
-		if ( !$card_token ||$card_token == 0 || $card_token == '0') {
-            $response = "ERROR, ORDER_ID '{$order_id}':  Dados do cartão inválidos - Não foi possível gerar o token do cartão. Verifique os dados e tente novamente.";
-			$logger->info( wc_print_r( $response, true ), array( 'source' => 'woo-we-payments-credit-card-errors' ) );
+		// if ($card_token == 0 || $card_token == '0') {
+        //     $response = "ERROR, ORDER_ID '{$order_id}':  Dados do cartão inválidos - Não foi possível gerar o token do cartão. Verifique os dados e tente novamente.";
+		// 	$logger->info( wc_print_r( $response, true ), array( 'source' => 'woo-we-payments-credit-card-errors' ) );
 
-			wc_add_notice(  'Dados do cartão inválidos, por favor verifique os campos preenchidos e tente novamente..', 'error' );
+		// 	wc_add_notice(  'Dados do cartão inválidos, por favor verifique os campos preenchidos e tente novamente..', 'error' );
 			
 
-            return;
-        }
+        //     return;
+        // }
 
 		$product_info = array();
 
@@ -266,16 +251,16 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
 		}
 
         //customer data
-        $customer_name = $order->get_billing_first_name() . ' ' . $order->get_billing_last_name();
-        $document_number = str_replace(array('.', '-', ' '), '', get_user_meta($order->get_user_id(), 'billing_cpf', true));
-		$customer_email = get_user_meta( $order->get_user_id(), 'billing_email', true );
-        $street = get_user_meta( $order->get_user_id(), 'billing_address_1', true );
-        $street_number = get_user_meta( $order->get_user_id(), 'billing_number', true );
-        $street_complement = get_user_meta( $order->get_user_id(), 'billing_address_2', true );
-        $neighborhood = get_user_meta( $order->get_user_id(), 'billing_neighborhood', true );
-        $city = get_user_meta( $order->get_user_id(), 'billing_city', true );
-        $state_code = get_user_meta( $order->get_user_id(), 'billing_state', true );
-        $zipcode = get_user_meta( $order->get_user_id(), 'billing_postcode', true );
+		$customer_email =  $_POST[ 'billing_email' ];
+        $customer_name =  $_POST[ 'billing_first_name' ] ." ".  $_POST[ 'billing_last_name' ];
+        $document_number = str_replace(array('.', '-', ' '), '',  $_POST[ 'billing_cpf' ]);
+        $street = isset($_POST['billing_address_1']) ? sanitize_text_field($_POST['billing_address_1']) : '';
+        $street_number = isset($_POST['billing_number']) ? sanitize_text_field($_POST['billing_number']) : '';
+        $street_complement = isset($_POST['billing_address_2']) ? sanitize_text_field($_POST['billing_address_2']) : '';
+        $neighborhood = isset($_POST['billing_neighborhood']) ? sanitize_text_field($_POST['billing_neighborhood']) : '';
+        $city = isset($_POST['billing_city']) ? sanitize_text_field($_POST['billing_city']) : '';
+        $state_code = isset($_POST['billing_state']) ? sanitize_text_field($_POST['billing_state']) : '';
+        $zipcode = isset($_POST['billing_postcode']) ? sanitize_text_field($_POST['billing_postcode']) : '';
 
         $request_data = array(
             'customNumber' => strval($order_id),
@@ -358,15 +343,14 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
 				$key = $response['key'];
                 $payinId = $response['id'];
                 
-
-				$this->we_payents_save_key_and_checkout($order,$key);
+				$this->we_payments_save_key_and_checkout($order, $key, $payinId);
 
                 $return_data = array(
                     'result'   => 'success',
                     'redirect' => $this->get_return_url($order),
                 );
 
-				$order->add_order_note( 'Cobrança criada na WEPayments.');
+				$order->add_order_note( 'Cobrança criada na WEpayments.');
 				$logger->info( wc_print_r( $response, true ), array( 'source' => 'woo-we-payments-credit-card-success' ) );
 
 				$order->save();
@@ -546,8 +530,12 @@ class Credit_Card_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
 
 
 	
-    public function payment_scripts() {
-        wp_enqueue_script( 'wepayments-sdk', 'https://sdk.sandbox.wepayments.com.br/v1', array( 'jquery' ), '', true );
+	public function payment_scripts() {
+		$sdk_url = $this->testmode ? 'https://sdk.sandbox.wepayments.com.br/v1' : 'https://sdk.wepayments.com.br/v1';
+		wp_enqueue_script('wepayments-sdk', $sdk_url, array('jquery'), '', true);
+	
+	
+	
 		?>
 		<script>
 			document.addEventListener('DOMContentLoaded', async function() {

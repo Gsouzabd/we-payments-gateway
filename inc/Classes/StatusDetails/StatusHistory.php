@@ -2,7 +2,7 @@
 
 namespace Inc_Woo_We_Payments\Classes\StatusDetails;
 
-class statusHistory{
+class StatusHistory{
 
     public string $detail;
     

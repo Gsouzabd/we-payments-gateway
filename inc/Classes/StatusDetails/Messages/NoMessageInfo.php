@@ -3,7 +3,7 @@
 
 namespace Inc_Woo_We_Payments\Classes\StatusDetails\Messages;
 
-use Inc_Woo_We_Payments\Classes\StatusDetails\statusHistory;
+use Inc_Woo_We_Payments\Classes\StatusDetails\StatusHistory;
 
 class NoMessageInfo extends MessageDetail{
 
@@ -12,7 +12,7 @@ class NoMessageInfo extends MessageDetail{
         parent::__construct(null);
     }
 
-    public function message(statusHistory $statusHistory): string
+    public function message(StatusHistory $StatusHistory): string
     {
         return "Nenhuma informação fornecida";
     }

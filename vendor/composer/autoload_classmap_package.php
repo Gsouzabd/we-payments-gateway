@@ -346,7 +346,7 @@ return array(
 		'version' => '9999999-dev',
 		'path'    => $baseDir . '/inc/Classes/StatusDetails/Messages/NoMessageInfo.php'
 	),
-	'Inc_Woo_We_Payments\\Classes\\StatusDetails\\statusHistory' => array(
+	'Inc_Woo_We_Payments\\Classes\\StatusDetails\\StatusHistory' => array(
 		'version' => '9999999-dev',
 		'path'    => $baseDir . '/inc/Classes/StatusDetails/StatusHistory.php'
 	),

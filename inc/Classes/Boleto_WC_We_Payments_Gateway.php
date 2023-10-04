@@ -20,8 +20,8 @@ class Boleto_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
         $url = $this->url;
         
         $this->id = 'woo_we_payments_boleto'; 
-        $this->method_title = 'WEPayments - Boleto';
-        $this->method_description = 'Receba pagamentos de Boleto com a WEPayments.'; 
+        $this->method_title = 'WEpayments - Boleto';
+        $this->method_description = 'Receba pagamentos de Boleto com a WEpayments.'; 
     
         $this->supports = array(
             'products'
@@ -44,7 +44,6 @@ class Boleto_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
         $this->discount_type = $this->get_option('discount_type');
         $this->discount_date = $this->get_option('discount_date');
 
-        
 
         add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
     
@@ -61,7 +60,7 @@ class Boleto_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
         $this->form_fields = array(
             'enabled' => array(
                 'title'       => 'Ativar',
-                'label'       => 'Ativar Boleto - WEPayments',
+                'label'       => 'Ativar Boleto - WEpayments',
                 'type'        => 'checkbox',
                 'description' => '',
                 'default'     => 'no'
@@ -103,7 +102,7 @@ class Boleto_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
                 'title'       => __( 'Quantidade de dias para vencimento', 'woo-we-payments' ),
                 'type'        => 'number',
                 'description' => __( 'Defina em dia o prazo de vencimento do Boleto.', 'woo-we-payments' ),
-                'default'     => '0',
+                'default'     => '1',
             ),
             'fine' => array(
                 'title'       => __( 'Multa após vencimento ', 'woo-we-payments' ),
@@ -122,10 +121,12 @@ class Boleto_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
             'discount_type' => array(
                 'title'       => __( 'Tipo de Desconto', 'woo-we-payments' ),
                 'type'        => 'select',
-                'default'     => 'percent',
                 'description' => __( 'Caso forneça desconto para pagamentos adiantados, informe o tipo de desconto.', 'woo-we-payments' ),
                 'desc_tip'    => true,
+                'default'     => 'none',
+
                 'options'     => array(
+                    'none'  => __( 'Nenhum', 'woo-we-payments' ),
                     'percent'            => __( 'Porcentagem', 'woo-we-payments' ),
                     'amountInCents'      => __( 'Valor Fixo em centavos', 'woo-we-payments' ),
                     'dailyAmountInCents' => __( 'Valor Diário em centavos', 'woo-we-payments' ),
@@ -141,7 +142,7 @@ class Boleto_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
             'discount_date' => array(
                 'title'       => __( 'Data de Vencimento do Desconto', 'woo-we-payments' ),
                 'type'        => 'number',
-                'default'     => '',
+                'default'     => '0',
                 'desc_tip'    => true,
                 'description' => __( 'Prazo em dias do vencimento do desconto (não pode ser superior à data de vencimento).', 'woo-we-payments' ),
             ),
@@ -150,20 +151,6 @@ class Boleto_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
         );
     }
 
-
-    public function validate_fields() {
-
-        if( empty( $_POST[ 'billing_first_name' ]) ) {
-            wc_add_notice(  'Campo "nome" é obrigatório!', 'error' );
-            return false;
-        }
-        if( empty( $_POST[ 'billing_cpf' ]) ) {
-            wc_add_notice(  'Campo "CPF" é obrigatório!', 'error' );
-            return false;
-        }
-        return true;
-
-    }
 
 
     public function process_payment( $order_id ) {
@@ -189,15 +176,18 @@ class Boleto_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
         } 
         
         //customer data
-        $customer_name = $order->get_billing_first_name() . ' ' . $order->get_billing_last_name();
-        $document_number = str_replace(array('.', '-', ' '), '', get_user_meta($order->get_user_id(), 'billing_cpf', true));
-        $street = get_user_meta( $order->get_user_id(), 'billing_address_1', true );
-        $street_number = get_user_meta( $order->get_user_id(), 'billing_number', true );
-        $street_complement = get_user_meta( $order->get_user_id(), 'billing_address_2', true );
-        $neighborhood = get_user_meta( $order->get_user_id(), 'billing_neighborhood', true );
-        $city = get_user_meta( $order->get_user_id(), 'billing_city', true );
-        $state_code = get_user_meta( $order->get_user_id(), 'billing_state', true );
-        $zipcode = get_user_meta( $order->get_user_id(), 'billing_postcode', true );
+		$customer_email =  $_POST[ 'billing_email' ];
+        $customer_name =  $_POST[ 'billing_first_name' ] ." ".  $_POST[ 'billing_last_name' ];
+        $document_number = str_replace(array('.', '-', ' '), '',  $_POST[ 'billing_cpf' ]);
+        $street = isset($_POST['billing_address_1']) ? sanitize_text_field($_POST['billing_address_1']) : '';
+        $street_number = isset($_POST['billing_number']) ? sanitize_text_field($_POST['billing_number']) : '';
+        $street_complement = isset($_POST['billing_address_2']) ? sanitize_text_field($_POST['billing_address_2']) : '';
+        $neighborhood = isset($_POST['billing_neighborhood']) ? sanitize_text_field($_POST['billing_neighborhood']) : '';
+        $city = isset($_POST['billing_city']) ? sanitize_text_field($_POST['billing_city']) : '';
+        $state_code = isset($_POST['billing_state']) ? sanitize_text_field($_POST['billing_state']) : '';
+        $zipcode = isset($_POST['billing_postcode']) ? sanitize_text_field($_POST['billing_postcode']) : '';
+
+        
 
         $request_data = array(
             'customNumber' => strval($order_id),
@@ -228,16 +218,15 @@ class Boleto_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
                 'document' => $this->document,
                 'helpdesk' => site_url()
             ),
-            'fine' => array(
-                'percent' => floatval($this->fine),
-                'interest' => floatval($this->interest),
+            $this->fine == 0 ? null : 'fine' => array(
+                'percent' => $this->fine == 0 ? null : floatval($this->fine),
+                'interest' => $this->interest  == 0 ? null : floatval($this->interest / 30),
             ),
-            'discount' => array(
-                $this->discount_type => floatval($this->discount),
+            $this->discount_type == 'none' ? null : 'discount' => array(
+                $this->discount_type => $this->discount == 0 ? null : floatval($this->discount),
                 ($this->discount_type == 'dailyAmountInCents') ? '' : 'date' => $formattedDiscountDate
             )
         );
-
 
         $curl = curl_init();
 
@@ -256,8 +245,8 @@ class Boleto_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
                 'Authorization: Bearer '.$this->api_key
             ),
         ));
-        
         $response = json_decode(curl_exec($curl),true);
+
         echo json_encode(array('response' => $response));
 		// ORDER LOG
 		$logger = wc_get_logger();
@@ -282,13 +271,14 @@ class Boleto_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
                 $barcodeHtml = $generator->getBarcode($boletoBarCode, $generator::TYPE_CODE_128);
                 
                 
-				$order->add_order_note( 'Cobrança criada na WEPayments.');
+				$order->add_order_note( 'Cobrança criada na WEpayments.');
                 $order->add_order_note( 'Boleto gerado. Linha digitável '.$digitableLine, true );
 
-                $key = $response['key'];
+				$key = $response['key'];
                 $payinId = $response['id'];
+                
+				$this->we_payments_save_key_and_checkout($order, $key, $payinId);
 
-				$this->we_payents_save_key_and_checkout($order,$key);
 
                 $return_data = array(
                     'result'   => 'success',
@@ -355,6 +345,8 @@ class Boleto_WC_We_Payments_Gateway extends WC_We_Payments_Gateway{
 		http_response_code(200);
 	}
 
+
+    
 
 }
 

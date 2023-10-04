@@ -24,19 +24,31 @@ class Functions{
         $pixInstructions = $order->get_meta('pix_instructions');
         $pixCopyPaste = $order->get_meta('pix_copy_paste');
         $pixExpiration = $order->get_meta('pix_expiration');
+        $checkoutLink = $order->get_meta('woo_we_payments_checkout');
+
         $dateTime = new DateTime($pixExpiration);   
         // Formata a data no formato 'd-m-y\TH:i:s'
         $formattedDatePixEpiration = $dateTime->format('d-m-y\TH:i:s');
         //Gera o qrcode 
+        echo '<div id="custom-thankyou-content" style="text-align: center">';
+
         if ($pixPayload) {
-            echo '<div id="custom-thankyou-content" style="text-align: center">';
                 echo '<p>Realiza o pagamento com o QR CODE abaixo: </p>';
                 echo  '<img src="'.$pixPayload.'">'; 
                 echo '<p>'.$pixInstructions.'</p>';
                 echo '<p>Ou copie e cole o código: </p><p><u>'.$pixCopyPaste.'</u></p>';
                 echo '<small>Esse código irá expirar em ' . $formattedDatePixEpiration . '</small>';
-            echo '</div>';
         }
+        echo '<p>Você também poderá realizar o pagamento e imprimir a cobrança no<br/> <a href='.$checkoutLink.'>Checkout WEpayments</a><p>';
+        echo '</div>';
+        ?>
+        <style>
+            div#custom-thankyou-content > img {
+                position: relative;
+                left: 43%;
+            }
+        </style>
+        <?php
     }
     
 
@@ -50,7 +62,7 @@ class Functions{
         
         $boletoBarCode = $order->get_meta('boleto_bar_code');
         $digitableLine = $order->get_meta('boleto_digitable_line');
-        $checkoutLink = $order-> get_meta('woo_we_payments_checkout');
+        $checkoutLink = $order->get_meta('woo_we_payments_checkout');
 
         //Gera o código de barra 
         if ($boletoBarCode) {
@@ -61,9 +73,16 @@ class Functions{
             echo '<h4><a href="'.$checkoutLink.'"> Imprimir boleto </a><h5>';
             echo '</div>';
         }
+        ?>
+        <style>
+            div#custom-thankyou-content > div {
+                position: relative;
+                left: 25%;
+            }
+        </style>
+        <?php
     }
-                                
-                    
-    
+                         
+                
     
 }

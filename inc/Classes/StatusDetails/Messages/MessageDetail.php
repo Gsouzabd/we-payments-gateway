@@ -2,7 +2,7 @@
 
 namespace Inc_Woo_We_Payments\Classes\StatusDetails\Messages;
 
-use Inc_Woo_We_Payments\Classes\StatusDetails\statusHistory;
+use Inc_Woo_We_Payments\Classes\StatusDetails\StatusHistory;
 
 abstract class MessageDetail{
     
@@ -13,5 +13,5 @@ abstract class MessageDetail{
         $this->nextMessageDetails = $nextMessageDetails;
     }
 
-    abstract public function message(statusHistory $statusHistory): string;
+    abstract public function message(StatusHistory $StatusHistory): string;
 }

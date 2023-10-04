@@ -1,4 +1,4 @@
-=== WEPayments for WooCommerce ===
+=== WEpayments for WooCommerce ===
 Contributors: wepayments, marcofrasson
 Donate link: https://wepayments.com.br
 Tags: boleto, boleto bancario, cartão de crédito, gateway, pagamento, woocommerce
@@ -44,13 +44,13 @@ Para instalar o nosso plugin são apenas 2 passos simples:
 
 #### **No WooCommerce**
 
-- Configura o plugin na aba WooCommerce > Configurações > Integração > WEPayments;
+- Configura o plugin na aba WooCommerce > Configurações > Integração > WEpayments;
 - Insira suas chaves;
-- Na WEPayments, temos o ambiente para testes, chamado Sandbox, e o ambiente de Produção, que é o definitivo. Se você estiver com os tokens de produção, precisa desmarcar a caixinha de sandbox no WordPress para começar a vender!
+- Na WEpayments, temos o ambiente para testes, chamado Sandbox, e o ambiente de Produção, que é o definitivo. Se você estiver com os tokens de produção, precisa desmarcar a caixinha de sandbox no WordPress para começar a vender!
 
 = Requerimentos =
 
-Para garantir a compatibilidade do seu e-commerce com o plugin da WEPayments, você precisa dos seguintes requerimentos:
+Para garantir a compatibilidade do seu e-commerce com o plugin da WEpayments, você precisa dos seguintes requerimentos:
 
 - Requer WooCommerce 6.0 ou posterior para funcionar;
 - Requer Brazilian Market on WooCommerce para funcionar;
@@ -58,7 +58,7 @@ Para garantir a compatibilidade do seu e-commerce com o plugin da WEPayments, vo
 
 = Configurações do plugin =
 
-Para configurar as chaves de integração da WEPayments, acesse a aba do WooCommerce > Configurações > Integração > WEPayments
+Para configurar as chaves de integração da WEpayments, acesse a aba do WooCommerce > Configurações > Integração > WEpayments
 
 == Frequently Asked Questions ==
 
@@ -73,7 +73,7 @@ Este plugin esta licenciado como GPL.
 
 = Consigo usar o ambiente sandbox =
 
-Sim, nas configurações de integração você poderá selecionar o sandbox em "WooCommerce" > "Configurações" > "Integração" > "WEPayments"
+Sim, nas configurações de integração você poderá selecionar o sandbox em "WooCommerce" > "Configurações" > "Integração" > "WEpayments"
 
 = Consigo habilitar somente o cartão de crédito, pix ou boleto? =
 
